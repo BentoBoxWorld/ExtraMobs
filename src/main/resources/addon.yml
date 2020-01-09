@@ -1,0 +1,13 @@
+name: ExtraMobs
+main: world.bentobox.extramobs.ExtraMobsAddon
+version: ${version}${build.number}
+repository: 'BentoBoxWorld/ExtraMobs'
+metrics: true
+icon: SHULKER_SHELL
+
+authors:
+  - BONNe
+
+softdepend: AcidIsland, BSkyBlock, CaveBlock, SkyGrid
+
+permissions: []

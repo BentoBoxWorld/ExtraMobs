@@ -1,0 +1,22 @@
+# ExtraMobs Configuration ${version}
+#
+# This list stores GameModes in which Likes addon should not work.
+# To disable addon it is necessary to write its name in new line that starts with -. Example:
+# disabled-gamemodes:
+#  - BSkyBlock
+disabled-gamemodes: []
+nether-chances:
+  # Chance to spawn Wither Skeleton instead of Zombie Pigmen
+  wither-skeleton: 0.01
+  # Chance to spawn Blaze instead of Zombie Pigmen
+  blaze: 0.1
+end-chances:
+  # Chance to spawn Shulker instead of Enderman
+  shulker: 0.1
+overworld-chance:
+  # Chance to spawn Guardian instead of a fish.
+  guardian: 0.1
+  # Chance to spawn Bee hive on growing Birch or Oak tree.
+  bee-hive: 0.01
+  # Chance to spawn Bee in Beehive. Spawning will try to happen 3 times.
+  bee: 0.2
