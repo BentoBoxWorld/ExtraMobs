@@ -84,7 +84,7 @@ public class TreesGrowthListener implements Listener
 			return;
 		}
 
-		if (this.addon.getSettings().getBeeHiveChance() < this.beeHiveRandom.nextDouble())
+		if (this.beeHiveRandom.nextDouble() >= this.addon.getSettings().getBeeHiveChance())
 		{
 			// Unlucky. BeeHive is not generated.
 			return;
@@ -163,7 +163,7 @@ public class TreesGrowthListener implements Listener
 			// Try to spawn bee 3 times
 			for (int i = 0; i < 3; i++)
 			{
-				if (this.addon.getSettings().getBeeChance() >= this.beeHiveRandom.nextDouble())
+				if (this.beeHiveRandom.nextDouble() < this.addon.getSettings().getBeeChance())
 				{
 					// Spawn Bee :)
 					event.getWorld().spawnEntity(beeLocation.getLocation(), EntityType.BEE);

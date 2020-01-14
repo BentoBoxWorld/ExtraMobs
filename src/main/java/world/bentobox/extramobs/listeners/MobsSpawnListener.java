@@ -73,20 +73,15 @@ public class MobsSpawnListener implements Listener
 		{
 			// replace pigmen with blaze or wither
 
-
-
 			if (this.isSuitableNetherLocation(event.getLocation()))
 			{
-				double random = this.spawningRandom.nextDouble();
-
-				if (this.addon.getSettings().getWitherSkeletonChance() >= random)
+				if (this.spawningRandom.nextDouble() < this.addon.getSettings().getWitherSkeletonChance())
 				{
 					// oOo wither skeleton got lucky.
 					this.summonEntity(event.getLocation(), EntityType.WITHER_SKELETON);
 					event.setCancelled(true);
 				}
-				else if (this.addon.getSettings().getWitherSkeletonChance() +
-					this.addon.getSettings().getBlazeChance() >= random)
+				else if (this.spawningRandom.nextDouble() < this.addon.getSettings().getBlazeChance())
 				{
 					// oOo blaze got lucky.
 					this.summonEntity(event.getLocation(), EntityType.BLAZE);
@@ -100,7 +95,7 @@ public class MobsSpawnListener implements Listener
 			// replace enderman with shulker
 			if (this.isSuitableEndLocation(event.getLocation()))
 			{
-				if (this.addon.getSettings().getShulkerChance() >= this.spawningRandom.nextDouble())
+				if (this.spawningRandom.nextDouble() < this.addon.getSettings().getShulkerChance())
 				{
 					// oOo shulker got lucky.
 					this.summonEntity(event.getLocation(), EntityType.SHULKER);
@@ -129,12 +124,20 @@ public class MobsSpawnListener implements Listener
 
 				if (this.isSuitableGuardianLocation(event.getLocation()))
 				{
-					if (this.addon.getSettings().getGuardianChance() >= this.spawningRandom.nextDouble())
+					if (this.spawningRandom.nextDouble() < this.addon.getSettings().getGuardianChance())
 					{
 						// oOo guardian got lucky.
 						this.summonEntity(event.getLocation(), EntityType.GUARDIAN);
 						event.setCancelled(true);
 					}
+					else
+					{
+						System.out.println("unlucky");
+					}
+				}
+				else
+				{
+					System.out.println("Not suitable place");
 				}
 			}
 		}
@@ -151,7 +154,7 @@ public class MobsSpawnListener implements Listener
 	{
 		Material material = location.getBlock().getRelative(BlockFace.DOWN).getType();
 
-		return material == Material.NETHER_BRICK ||
+		return material == Material.NETHER_BRICKS ||
 			material == Material.NETHER_BRICK_SLAB ||
 			material == Material.NETHER_BRICK_STAIRS;
 	}
@@ -189,6 +192,8 @@ public class MobsSpawnListener implements Listener
 		}
 
 		Material material = block.getType();
+
+		System.out.println("Material is " + material);
 
 		return material == Material.PRISMARINE ||
 			material == Material.PRISMARINE_SLAB ||
