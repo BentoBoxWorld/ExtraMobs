@@ -16,7 +16,3 @@ end-chances:
 overworld-chance:
   # Chance to spawn Guardian instead of a fish.
   guardian: 0.1
-  # Chance to spawn Bee hive on growing Birch or Oak tree.
-  bee-hive: 0.01
-  # Chance to spawn Bee in Beehive. Spawning will try to happen 3 times.
-  bee: 0.2

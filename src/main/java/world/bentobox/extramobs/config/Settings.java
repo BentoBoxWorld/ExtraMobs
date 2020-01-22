@@ -116,27 +116,6 @@ public class Settings implements ConfigObject
 
 
 	/**
-	 * This method returns the beeHiveChance value.
-	 * @return the value of beeHiveChance.
-	 */
-	public double getBeeHiveChance()
-	{
-		return beeHiveChance;
-	}
-
-
-	/**
-	 * This method sets the beeHiveChance value.
-	 * @param beeHiveChance the beeHiveChance new value.
-	 *
-	 */
-	public void setBeeHiveChance(double beeHiveChance)
-	{
-		this.beeHiveChance = beeHiveChance;
-	}
-
-
-	/**
 	 * This method returns the guardianChance value.
 	 * @return the value of guardianChance.
 	 */
@@ -157,29 +136,9 @@ public class Settings implements ConfigObject
 	}
 
 
-	/**
-	 * This method returns the beeChance value.
-	 * @return the value of beeChance.
-	 */
-	public double getBeeChance()
-	{
-		return beeChance;
-	}
-
-
-	/**
-	 * This method sets the beeChance value.
-	 * @param beeChance the beeChance new value.
-	 *
-	 */
-	public void setBeeChance(double beeChance)
-	{
-		this.beeChance = beeChance;
-	}
-
 // ---------------------------------------------------------------------
-	// Section: Variables
-	// ---------------------------------------------------------------------
+// Section: Variables
+// ---------------------------------------------------------------------
 
 
 	@ConfigComment("")
@@ -205,12 +164,4 @@ public class Settings implements ConfigObject
 	@ConfigComment("Chance to spawn Guardian instead of a fish.")
 	@ConfigEntry(path = "overworld-chance.guardian")
 	private double guardianChance;
-
-	@ConfigComment("Chance to spawn Bee hive on growing Birch or Oak tree.")
-	@ConfigEntry(path = "overworld-chance.bee-hive")
-	private double beeHiveChance;
-
-	@ConfigComment("Chance to spawn Bee in Beehive. Spawning will try to happen 3 times.")
-	@ConfigEntry(path = "overworld-chance.bee")
-	private double beeChance;
 }

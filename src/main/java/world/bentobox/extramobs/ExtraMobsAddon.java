@@ -7,7 +7,6 @@ import world.bentobox.bentobox.api.addons.Addon;
 import world.bentobox.bentobox.api.configuration.Config;
 import world.bentobox.extramobs.config.Settings;
 import world.bentobox.extramobs.listeners.MobsSpawnListener;
-import world.bentobox.extramobs.listeners.TreesGrowthListener;
 
 
 /**
@@ -73,12 +72,6 @@ public class ExtraMobsAddon extends Addon
 
 		if (this.hooked)
 		{
-			// Register the listeners.
-			if (this.getSettings().getBeeHiveChance() > 0)
-			{
-				this.registerListener(new TreesGrowthListener(this));
-			}
-
 			this.registerListener(new MobsSpawnListener(this));
 		}
 		else
