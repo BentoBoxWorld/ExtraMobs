@@ -130,14 +130,6 @@ public class MobsSpawnListener implements Listener
 						this.summonEntity(event.getLocation(), EntityType.GUARDIAN);
 						event.setCancelled(true);
 					}
-					else
-					{
-						System.out.println("unlucky");
-					}
-				}
-				else
-				{
-					System.out.println("Not suitable place");
 				}
 			}
 		}
@@ -192,8 +184,6 @@ public class MobsSpawnListener implements Listener
 		}
 
 		Material material = block.getType();
-
-		System.out.println("Material is " + material);
 
 		return material == Material.PRISMARINE ||
 			material == Material.PRISMARINE_SLAB ||
