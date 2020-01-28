@@ -36,7 +36,7 @@
         <powermock.version>1.7.4</powermock.version>
         <!-- More visible way how to change dependency versions -->
         <spigot.version>1.15.2-R0.1-SNAPSHOT</spigot.version>
-        <bentobox.version>1.10.0</bentobox.version>
+        <bentobox.version>1.11.0</bentobox.version>
         <!-- Revision variable removes warning about dynamic version -->
         <revision>${build.version}-SNAPSHOT</revision>
         <!-- This allows to change between versions and snapshots. -->
@@ -45,7 +45,7 @@
                 X.Y.Z -> BentoBox core version
                 .M    -> Addon development iteration.
         -->
-        <build.version>1.10.0.1</build.version>
+        <build.version>1.11.0.2</build.version>
         <build.number>-LOCAL</build.number>
     </properties>
 
