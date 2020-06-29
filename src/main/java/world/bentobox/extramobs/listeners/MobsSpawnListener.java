@@ -68,7 +68,8 @@ public class MobsSpawnListener implements Listener
 		}
 
 
-		if (event.getEntityType() == EntityType.PIG_ZOMBIE &&
+		if ((event.getEntityType().name().equals("PIG_ZOMBIE") ||
+			event.getEntityType().name().equals("ZOMBIFIED_PIGLIN")) &&
 			this.addon.getPlugin().getIWM().isIslandNether(world))
 		{
 			// replace pigmen with blaze or wither
