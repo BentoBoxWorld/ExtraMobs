@@ -45,7 +45,7 @@
                 X.Y.Z -> BentoBox core version
                 .M    -> Addon development iteration.
         -->
-        <build.version>1.11.0.3</build.version>
+        <build.version>1.11.0.4</build.version>
         <build.number>-LOCAL</build.number>
     </properties>
 
