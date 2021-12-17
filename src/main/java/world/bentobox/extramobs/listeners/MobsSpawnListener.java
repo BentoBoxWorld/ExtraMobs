@@ -118,8 +118,7 @@ public class MobsSpawnListener implements Listener
 			if (biome == Biome.DEEP_OCEAN ||
 				biome == Biome.DEEP_COLD_OCEAN ||
 				biome == Biome.DEEP_FROZEN_OCEAN ||
-				biome == Biome.DEEP_LUKEWARM_OCEAN ||
-				biome == Biome.DEEP_WARM_OCEAN)
+				biome == Biome.DEEP_LUKEWARM_OCEAN)
 			{
 				// Monuments are located only in Deep Ocean. So guardians will spawn there.
 
