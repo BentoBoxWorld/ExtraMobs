@@ -1,6 +1,9 @@
 package world.bentobox.extramobs.listeners;
 
 
+import java.util.Optional;
+import java.util.Random;
+
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
@@ -8,14 +11,12 @@ import org.bukkit.block.Biome;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.entity.EntityType;
+import org.bukkit.entity.Fish;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.eclipse.jdt.annotation.NonNull;
-
-import java.util.Optional;
-import java.util.Random;
 
 import world.bentobox.bentobox.api.addons.GameModeAddon;
 import world.bentobox.extramobs.ExtraMobsAddon;
@@ -68,8 +69,9 @@ public class MobsSpawnListener implements Listener
 		}
 
 
-		if ((event.getEntityType().name().equals("PIG_ZOMBIE") ||
-			event.getEntityType().name().equals("ZOMBIFIED_PIGLIN")) &&
+        if ((event.getEntityType().equals(EntityType.ZOMBIFIED_PIGLIN)
+                || event.getEntityType().equals(EntityType.PIGLIN))
+                &&
 			this.addon.getPlugin().getIWM().isIslandNether(world))
 		{
 			// replace pigmen with blaze or wither
@@ -104,10 +106,7 @@ public class MobsSpawnListener implements Listener
 				}
 			}
 		}
-		else if (world.getEnvironment() == World.Environment.NORMAL &&
-			(event.getEntityType() == EntityType.COD ||
-				event.getEntityType() == EntityType.SALMON ||
-				event.getEntityType() == EntityType.TROPICAL_FISH))
+        else if (world.getEnvironment() == World.Environment.NORMAL && event.getEntity() instanceof Fish)
 		{
 			// Check biome
 			Biome biome = world.getBiome(
