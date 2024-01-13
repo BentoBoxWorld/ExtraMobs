@@ -60,24 +60,25 @@ public class MobsSpawnListener implements Listener
 			this.addon.getPlugin().getIWM().getAddon(world);
 
 		if (!optionalAddon.isPresent() ||
-			!this.addon.getSettings().getDisabledGameModes().isEmpty() &&
+                (!this.addon.getSettings().getDisabledGameModes().isEmpty()
+                        &&
 				this.addon.getSettings().getDisabledGameModes().contains(
-					optionalAddon.get().getDescription().getName()))
+					optionalAddon.get().getDescription().getName())))
 		{
 			// GameMode addon is not in enable list.
 			return;
 		}
 
-
         if ((event.getEntityType().equals(EntityType.ZOMBIFIED_PIGLIN)
                 || event.getEntityType().equals(EntityType.PIGLIN))
-                &&
-			this.addon.getPlugin().getIWM().isIslandNether(world))
+                && this.addon.getPlugin().getIWM().isIslandNether(world))
 		{
+
 			// replace pigmen with blaze or wither
 
 			if (this.isSuitableNetherLocation(event.getLocation()))
 			{
+
 				if (this.spawningRandom.nextDouble() < this.addon.getSettings().getWitherSkeletonChance())
 				{
 					// oOo wither skeleton got lucky.
@@ -108,6 +109,7 @@ public class MobsSpawnListener implements Listener
 		}
         else if (world.getEnvironment() == World.Environment.NORMAL && event.getEntity() instanceof Fish)
 		{
+
 			// Check biome
 			Biome biome = world.getBiome(
 				event.getLocation().getBlockX(),
