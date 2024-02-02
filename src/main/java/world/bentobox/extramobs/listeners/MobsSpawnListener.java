@@ -1,6 +1,9 @@
 package world.bentobox.extramobs.listeners;
 
 
+import java.util.Optional;
+import java.util.Random;
+
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
@@ -8,14 +11,12 @@ import org.bukkit.block.Biome;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.entity.EntityType;
+import org.bukkit.entity.Fish;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.eclipse.jdt.annotation.NonNull;
-
-import java.util.Optional;
-import java.util.Random;
 
 import world.bentobox.bentobox.api.addons.GameModeAddon;
 import world.bentobox.extramobs.ExtraMobsAddon;
@@ -59,23 +60,25 @@ public class MobsSpawnListener implements Listener
 			this.addon.getPlugin().getIWM().getAddon(world);
 
 		if (!optionalAddon.isPresent() ||
-			!this.addon.getSettings().getDisabledGameModes().isEmpty() &&
+                (!this.addon.getSettings().getDisabledGameModes().isEmpty()
+                        &&
 				this.addon.getSettings().getDisabledGameModes().contains(
-					optionalAddon.get().getDescription().getName()))
+					optionalAddon.get().getDescription().getName())))
 		{
 			// GameMode addon is not in enable list.
 			return;
 		}
 
-
-		if ((event.getEntityType().name().equals("PIG_ZOMBIE") ||
-			event.getEntityType().name().equals("ZOMBIFIED_PIGLIN")) &&
-			this.addon.getPlugin().getIWM().isIslandNether(world))
+        if ((event.getEntityType().equals(EntityType.ZOMBIFIED_PIGLIN)
+                || event.getEntityType().equals(EntityType.PIGLIN))
+                && this.addon.getPlugin().getIWM().isIslandNether(world))
 		{
+
 			// replace pigmen with blaze or wither
 
 			if (this.isSuitableNetherLocation(event.getLocation()))
 			{
+
 				if (this.spawningRandom.nextDouble() < this.addon.getSettings().getWitherSkeletonChance())
 				{
 					// oOo wither skeleton got lucky.
@@ -104,11 +107,9 @@ public class MobsSpawnListener implements Listener
 				}
 			}
 		}
-		else if (world.getEnvironment() == World.Environment.NORMAL &&
-			(event.getEntityType() == EntityType.COD ||
-				event.getEntityType() == EntityType.SALMON ||
-				event.getEntityType() == EntityType.TROPICAL_FISH))
+        else if (world.getEnvironment() == World.Environment.NORMAL && event.getEntity() instanceof Fish)
 		{
+
 			// Check biome
 			Biome biome = world.getBiome(
 				event.getLocation().getBlockX(),
