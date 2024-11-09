@@ -1,7 +1,6 @@
 package world.bentobox.extramobs.listeners;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -12,24 +11,27 @@ import java.util.Optional;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
-import org.bukkit.block.Biome;
 import org.bukkit.block.Block;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Fish;
 import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.eclipse.jdt.annotation.NonNull;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.powermock.modules.junit4.PowerMockRunner;
 
 import world.bentobox.bentobox.BentoBox;
 import world.bentobox.bentobox.api.addons.AddonDescription;
 import world.bentobox.bentobox.api.addons.GameModeAddon;
+import world.bentobox.bentobox.api.user.User;
 import world.bentobox.bentobox.managers.IslandWorldManager;
 import world.bentobox.extramobs.ExtraMobsAddon;
 import world.bentobox.extramobs.config.Settings;
+import world.bentobox.extramobs.listeners.mocks.ServerMocks;
 
 @RunWith(PowerMockRunner.class)
 public class MobsSpawnListenerTest {
@@ -64,6 +66,7 @@ public class MobsSpawnListenerTest {
 
     @Before
     public void setUp() {
+        ServerMocks.newServer();
         settings = new Settings();
         when(addon.getSettings()).thenReturn(settings);
 
@@ -91,6 +94,13 @@ public class MobsSpawnListenerTest {
 
         // Initialize mocks and the class to test
         listener = new MobsSpawnListener(addon);
+    }
+
+    @After
+    public void tearDown() {
+        ServerMocks.unsetBukkitServer();
+        User.clearUsers();
+        Mockito.framework().clearInlineMocks();
     }
 
     // Test case for natural spawning of Zombified Piglin in the Nether
@@ -136,7 +146,6 @@ public class MobsSpawnListenerTest {
         when(event.getSpawnReason()).thenReturn(CreatureSpawnEvent.SpawnReason.NATURAL);
         when(event.getLocation()).thenReturn(location);
         when(world.getEnvironment()).thenReturn(World.Environment.NORMAL);
-        when(world.getBiome(anyInt(), anyInt(), anyInt())).thenReturn(Biome.DEEP_OCEAN);
         settings.setGuardianChance(1.1); // Set so that it will always spawn
         when(block.getType()).thenReturn(Material.WATER, Material.WATER, Material.WATER, Material.PRISMARINE);
 
