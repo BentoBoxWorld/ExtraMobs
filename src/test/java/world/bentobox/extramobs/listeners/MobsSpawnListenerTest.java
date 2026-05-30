@@ -32,7 +32,6 @@ import world.bentobox.extramobs.CommonTestSetup;
 import world.bentobox.extramobs.ExtraMobsAddon;
 import world.bentobox.extramobs.config.MobSpawnReplacement;
 import world.bentobox.extramobs.config.Settings;
-import world.bentobox.extramobs.listeners.mocks.ServerMocks;
 
 /**
  * Tests for {@link MobsSpawnListener}.
