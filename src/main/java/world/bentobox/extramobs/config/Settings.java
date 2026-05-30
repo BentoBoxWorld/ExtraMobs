@@ -1,7 +1,11 @@
 package world.bentobox.extramobs.config;
 
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import world.bentobox.bentobox.api.configuration.ConfigComment;
@@ -136,6 +140,105 @@ public class Settings implements ConfigObject
 	}
 
 
+	/**
+	 * Returns the raw per-gamemode settings map as loaded from {@code config.yml}.
+	 * The map structure is:
+	 * <pre>
+	 * gamemodeName -&gt; {
+	 *   "nether" -&gt; List&lt;Map&lt;String, Object&gt;&gt;,
+	 *   "end"    -&gt; List&lt;Map&lt;String, Object&gt;&gt;,
+	 *   "world"  -&gt; List&lt;Map&lt;String, Object&gt;&gt;
+	 * }
+	 * </pre>
+	 * Use {@link #getReplacements(String, String)} for convenient typed access.
+	 *
+	 * @return mutable map; never {@code null}.
+	 */
+	public Map<String, Object> getGamemodeSettings()
+	{
+		return gamemodeSettings;
+	}
+
+
+	/**
+	 * Sets the raw per-gamemode settings map.
+	 *
+	 * @param gamemodeSettings new value (may be {@code null}; stored as empty map).
+	 */
+	public void setGamemodeSettings(Map<String, Object> gamemodeSettings)
+	{
+		this.gamemodeSettings = gamemodeSettings != null ? gamemodeSettings : new LinkedHashMap<>();
+	}
+
+
+	/**
+	 * Returns the list of {@link MobSpawnReplacement} rules configured for the
+	 * given game mode and environment ({@code "world"}, {@code "nether"}, or
+	 * {@code "end"}).
+	 *
+	 * <p>Returns an empty list when no per-gamemode overrides exist, allowing
+	 * callers to fall back to global settings without extra null-checks.
+	 *
+	 * @param gameModeName name of the GameMode addon (e.g. {@code "BSkyBlock"}).
+	 * @param environment  one of {@code "world"}, {@code "nether"}, {@code "end"}.
+	 * @return immutable-safe list of replacement rules; never {@code null}.
+	 */
+	public List<MobSpawnReplacement> getReplacements(String gameModeName, String environment)
+	{
+		if (gamemodeSettings == null || gameModeName == null || environment == null)
+		{
+			return List.of();
+		}
+
+		Object rawGM = gamemodeSettings.get(gameModeName);
+
+		if (!(rawGM instanceof Map<?, ?> gmMap))
+		{
+			return List.of();
+		}
+
+		Object rawEnv = gmMap.get(environment);
+
+		if (!(rawEnv instanceof List<?> envList))
+		{
+			return List.of();
+		}
+
+		List<MobSpawnReplacement> result = new ArrayList<>();
+
+		for (Object rawEntry : envList)
+		{
+			if (!(rawEntry instanceof Map<?, ?> entryMap))
+			{
+				continue;
+			}
+
+			Object oldVal = entryMap.get("old");
+			Object newVal = entryMap.get("new");
+			Object chanceVal = entryMap.get("chance");
+
+			if (oldVal == null || newVal == null)
+			{
+				continue;
+			}
+
+			double chance = 0.0;
+
+			if (chanceVal instanceof Number n)
+			{
+				chance = n.doubleValue();
+			}
+
+			result.add(new MobSpawnReplacement(
+				oldVal.toString(),
+				newVal.toString(),
+				chance));
+		}
+
+		return result;
+	}
+
+
 // ---------------------------------------------------------------------
 // Section: Variables
 // ---------------------------------------------------------------------
@@ -164,4 +267,29 @@ public class Settings implements ConfigObject
 	@ConfigComment("Chance to spawn Guardian instead of a fish.")
 	@ConfigEntry(path = "overworld-chance.guardian")
 	private double guardianChance;
+
+	@ConfigComment("")
+	@ConfigComment("Per-gamemode settings that override the global defaults above.")
+	@ConfigComment("Each key is the exact GameMode addon name (case-sensitive).")
+	@ConfigComment("Each gamemode may define up to three environment sections:")
+	@ConfigComment("  world:  - replacements for the overworld")
+	@ConfigComment("  nether: - replacements for the nether")
+	@ConfigComment("  end:    - replacements for the end")
+	@ConfigComment("Each section is a list of replacement rules with the following fields:")
+	@ConfigComment("  old:    EntityType name of the mob to replace (e.g. ZOMBIFIED_PIGLIN)")
+	@ConfigComment("  new:    EntityType name of the replacement mob  (e.g. WITHER_SKELETON)")
+	@ConfigComment("  chance: Probability in the range 0.0-1.0")
+	@ConfigComment("Example:")
+	@ConfigComment("  gamemode-settings:")
+	@ConfigComment("    BSkyBlock:")
+	@ConfigComment("      nether:")
+	@ConfigComment("        - old: ZOMBIFIED_PIGLIN")
+	@ConfigComment("          new: WITHER_SKELETON")
+	@ConfigComment("          chance: 0.05")
+	@ConfigComment("      end:")
+	@ConfigComment("        - old: ENDERMAN")
+	@ConfigComment("          new: SHULKER")
+	@ConfigComment("          chance: 0.3")
+	@ConfigEntry(path = "gamemode-settings")
+	private Map<String, Object> gamemodeSettings = new LinkedHashMap<>();
 }

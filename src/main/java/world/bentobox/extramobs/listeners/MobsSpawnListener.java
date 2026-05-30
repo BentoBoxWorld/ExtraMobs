@@ -69,16 +69,21 @@ public class MobsSpawnListener implements Listener
 			return;
 		}
 
+		String gameModeName = optionalAddon.get().getDescription().getName();
+
         if ((event.getEntityType().equals(EntityType.ZOMBIFIED_PIGLIN)
                 || event.getEntityType().equals(EntityType.PIGLIN))
                 && this.addon.getPlugin().getIWM().isIslandNether(world))
 		{
-
 			// replace pigmen with blaze or wither
-
 			if (this.isSuitableNetherLocation(event.getLocation()))
 			{
+				if (this.applyGameModeReplacements(event, gameModeName, "nether"))
+				{
+					return;
+				}
 
+				// Fall back to global settings
 				if (this.spawningRandom.nextDouble() < this.addon.getSettings().getWitherSkeletonChance())
 				{
 					// oOo wither skeleton got lucky.
@@ -99,6 +104,12 @@ public class MobsSpawnListener implements Listener
 			// replace enderman with shulker
 			if (this.isSuitableEndLocation(event.getLocation()))
 			{
+				if (this.applyGameModeReplacements(event, gameModeName, "end"))
+				{
+					return;
+				}
+
+				// Fall back to global settings
 				if (this.spawningRandom.nextDouble() < this.addon.getSettings().getShulkerChance())
 				{
 					// oOo shulker got lucky.
@@ -109,7 +120,6 @@ public class MobsSpawnListener implements Listener
 		}
         else if (world.getEnvironment() == World.Environment.NORMAL && event.getEntity() instanceof Fish)
 		{
-
 			// Check biome
 			Biome biome = world.getBiome(
 				event.getLocation().getBlockX(),
@@ -125,6 +135,12 @@ public class MobsSpawnListener implements Listener
 
 				if (this.isSuitableGuardianLocation(event.getLocation()))
 				{
+					if (this.applyGameModeReplacements(event, gameModeName, "world"))
+					{
+						return;
+					}
+
+					// Fall back to global settings
 					if (this.spawningRandom.nextDouble() < this.addon.getSettings().getGuardianChance())
 					{
 						// oOo guardian got lucky.
@@ -195,6 +211,55 @@ public class MobsSpawnListener implements Listener
 			material == Material.DARK_PRISMARINE ||
 			material == Material.DARK_PRISMARINE_SLAB ||
 			material == Material.DARK_PRISMARINE_STAIRS;
+	}
+
+
+	/**
+	 * Attempts to apply per-gamemode replacement rules for the given environment.
+	 *
+	 * <p>Iterates through each configured {@link world.bentobox.extramobs.config.MobSpawnReplacement}
+	 * rule for {@code gameModeName}/{@code environment}.  For the first rule whose
+	 * {@code old} mob matches the spawning entity type and whose random roll succeeds,
+	 * the event is cancelled and the replacement entity is summoned.
+	 *
+	 * @param event        the spawn event (will be cancelled on a successful match).
+	 * @param gameModeName GameMode addon name resolved from the world.
+	 * @param environment  {@code "nether"}, {@code "end"}, or {@code "world"}.
+	 * @return {@code true} if a per-gamemode rule was applied (callers should skip
+	 *         further processing); {@code false} if no matching rule was found.
+	 */
+	private boolean applyGameModeReplacements(
+		CreatureSpawnEvent event,
+		String gameModeName,
+		String environment)
+	{
+		var rules = this.addon.getSettings().getReplacements(gameModeName, environment);
+
+		if (rules.isEmpty())
+		{
+			return false;
+		}
+
+		for (var rule : rules)
+		{
+			org.bukkit.entity.EntityType oldType = rule.resolveOldEntityType();
+			org.bukkit.entity.EntityType newType = rule.resolveNewEntityType();
+
+			if (oldType == null || newType == null)
+			{
+				continue;
+			}
+
+			if (event.getEntityType() == oldType
+				&& this.spawningRandom.nextDouble() < rule.getChance())
+			{
+				this.summonEntity(event.getLocation(), newType);
+				event.setCancelled(true);
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 
