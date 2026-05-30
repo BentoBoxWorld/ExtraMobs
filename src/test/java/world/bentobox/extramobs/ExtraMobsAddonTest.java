@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -44,6 +45,7 @@ class ExtraMobsAddonTest extends CommonTestSetup {
               shulker: 0.1
             overworld-chance:
               guardian: 0.1
+            gamemode-settings: {}
             """;
 
     @Mock
@@ -164,5 +166,22 @@ class ExtraMobsAddonTest extends CommonTestSetup {
         addon.onLoad();
         addon.onReload();
         assertEquals(0.01, addon.getSettings().getWitherSkeletonChance(), 1e-9);
+    }
+
+    @Test
+    void testGamemodeSettingsEmptyByDefault() {
+        addon.onLoad();
+        Settings s = addon.getSettings();
+        assertNotNull(s.getGamemodeSettings());
+        assertEquals(0, s.getGamemodeSettings().size());
+    }
+
+    @Test
+    void testGetReplacementsEmptyWhenNoPerGamemodeConfig() {
+        addon.onLoad();
+        Settings s = addon.getSettings();
+        assertTrue(s.getReplacements("BSkyBlock", "nether").isEmpty());
+        assertTrue(s.getReplacements("BSkyBlock", "end").isEmpty());
+        assertTrue(s.getReplacements("BSkyBlock", "world").isEmpty());
     }
 }

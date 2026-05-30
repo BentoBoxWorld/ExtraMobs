@@ -8,6 +8,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -28,6 +30,7 @@ import world.bentobox.bentobox.api.addons.AddonDescription;
 import world.bentobox.bentobox.api.addons.GameModeAddon;
 import world.bentobox.extramobs.CommonTestSetup;
 import world.bentobox.extramobs.ExtraMobsAddon;
+import world.bentobox.extramobs.config.MobSpawnReplacement;
 import world.bentobox.extramobs.config.Settings;
 
 /**
@@ -62,6 +65,8 @@ class MobsSpawnListenerTest extends CommonTestSetup {
         when(settings.getBlazeChance()).thenReturn(0.0);
         when(settings.getShulkerChance()).thenReturn(0.0);
         when(settings.getGuardianChance()).thenReturn(0.0);
+        // Default: no per-gamemode rules configured
+        when(settings.getReplacements(any(), any())).thenReturn(Collections.emptyList());
 
         // GameMode resolved by default
         AddonDescription desc = new AddonDescription.Builder("main.Class", "BSkyBlock", "1.0").build();
@@ -394,5 +399,143 @@ class MobsSpawnListenerTest extends CommonTestSetup {
         listener.onEntitySpawn(event);
 
         verify(world, never()).spawnEntity(any(Location.class), any(EntityType.class));
+    }
+
+    // ── Per-gamemode settings ──────────────────────────────────────────────
+
+    /**
+     * Helper: stubs settings.getReplacements(gameModeName, env) to return rules
+     * and ensures global chance methods return 0 so they cannot fire.
+     */
+    private void stubGameModeReplacement(String env, String oldMob, String newMob, double chance) {
+        MobSpawnReplacement rule = new MobSpawnReplacement(oldMob, newMob, chance);
+        when(settings.getReplacements("BSkyBlock", env)).thenReturn(List.of(rule));
+        // Ensure all global fallbacks are 0 so they cannot trigger
+        when(settings.getWitherSkeletonChance()).thenReturn(0.0);
+        when(settings.getBlazeChance()).thenReturn(0.0);
+        when(settings.getShulkerChance()).thenReturn(0.0);
+        when(settings.getGuardianChance()).thenReturn(0.0);
+    }
+
+    @Test
+    void testPerGameModeNetherReplacement() {
+        stubGameModeReplacement("nether", "ZOMBIFIED_PIGLIN", "BLAZE", 1.0);
+        when(event.getEntityType()).thenReturn(EntityType.ZOMBIFIED_PIGLIN);
+        when(iwm.isIslandNether(world)).thenReturn(true);
+        when(blockBelow.getType()).thenReturn(Material.NETHER_BRICKS);
+
+        listener.onEntitySpawn(event);
+
+        verify(world).spawnEntity(location, EntityType.BLAZE);
+        verify(event).setCancelled(true);
+    }
+
+    @Test
+    void testPerGameModeNetherReplacementEntityMismatchFallsBackToGlobal() {
+        // Rule targets ENDERMAN (wrong entity for the nether branch), chance 1.0
+        stubGameModeReplacement("nether", "ENDERMAN", "SHULKER", 1.0);
+        // Enable global wither-skeleton so it fires as fallback
+        when(settings.getWitherSkeletonChance()).thenReturn(1.0);
+
+        when(event.getEntityType()).thenReturn(EntityType.ZOMBIFIED_PIGLIN);
+        when(iwm.isIslandNether(world)).thenReturn(true);
+        when(blockBelow.getType()).thenReturn(Material.NETHER_BRICKS);
+
+        listener.onEntitySpawn(event);
+
+        // Per-gamemode rule does not match → global wither-skeleton fires
+        verify(world).spawnEntity(location, EntityType.WITHER_SKELETON);
+        verify(event).setCancelled(true);
+    }
+
+    @Test
+    void testPerGameModeNetherChanceZeroFallsBackToGlobal() {
+        stubGameModeReplacement("nether", "ZOMBIFIED_PIGLIN", "BLAZE", 0.0);
+        when(settings.getWitherSkeletonChance()).thenReturn(1.0);
+
+        when(event.getEntityType()).thenReturn(EntityType.ZOMBIFIED_PIGLIN);
+        when(iwm.isIslandNether(world)).thenReturn(true);
+        when(blockBelow.getType()).thenReturn(Material.NETHER_BRICKS);
+
+        listener.onEntitySpawn(event);
+
+        // Per-gamemode chance is 0 → rule not applied → global fires
+        verify(world).spawnEntity(location, EntityType.WITHER_SKELETON);
+    }
+
+    @Test
+    void testPerGameModeEndReplacement() {
+        stubGameModeReplacement("end", "ENDERMAN", "SHULKER", 1.0);
+        when(event.getEntityType()).thenReturn(EntityType.ENDERMAN);
+        when(iwm.isIslandEnd(world)).thenReturn(true);
+        when(blockBelow.getType()).thenReturn(Material.PURPUR_BLOCK);
+
+        listener.onEntitySpawn(event);
+
+        verify(world).spawnEntity(location, EntityType.SHULKER);
+        verify(event).setCancelled(true);
+    }
+
+    @Test
+    void testPerGameModeEndInvalidMobNameSkipped() {
+        // Both old and new names are invalid entity types
+        MobSpawnReplacement bad = new MobSpawnReplacement("INVALID_MOB", "ALSO_INVALID", 1.0);
+        when(settings.getReplacements("BSkyBlock", "end")).thenReturn(List.of(bad));
+        when(settings.getShulkerChance()).thenReturn(1.0);
+
+        when(event.getEntityType()).thenReturn(EntityType.ENDERMAN);
+        when(iwm.isIslandEnd(world)).thenReturn(true);
+        when(blockBelow.getType()).thenReturn(Material.PURPUR_BLOCK);
+
+        listener.onEntitySpawn(event);
+
+        // Invalid rule is skipped → global shulker fires
+        verify(world).spawnEntity(location, EntityType.SHULKER);
+    }
+
+    @Test
+    void testPerGameModeWorldReplacement() {
+        stubGameModeReplacement("world", "COD", "GUARDIAN", 1.0);
+        prepareFishEvent(Biome.DEEP_OCEAN);
+        prepareWaterColumnTopped(Material.PRISMARINE);
+
+        listener.onEntitySpawn(event);
+
+        verify(world).spawnEntity(location, EntityType.GUARDIAN);
+        verify(event).setCancelled(true);
+    }
+
+    @Test
+    void testGetReplacementsNullInputs() {
+        Settings s = new Settings();
+        // All null/empty paths should return empty list without NPE
+        assert s.getReplacements(null, "nether").isEmpty();
+        assert s.getReplacements("BSkyBlock", null).isEmpty();
+        assert s.getReplacements("BSkyBlock", "nether").isEmpty();
+    }
+
+    @Test
+    void testGetReplacementsParsesRawMap() {
+        Settings s = new Settings();
+        // Build the same structure that BentoBox/snakeyaml would produce when
+        // loading the YAML from config.
+        Map<String, Object> rule = Map.of(
+                "old", "ZOMBIFIED_PIGLIN",
+                "new", "WITHER_SKELETON",
+                "chance", 0.05);
+        Map<String, Object> gmSection = Map.of(
+                "nether", List.of(rule));
+        Map<String, Object> raw = new java.util.HashMap<>();
+        // Map.of("BSkyBlock", gmSection) would infer Map<String, Map<String, Object>>,
+        // which is not assignable to Map<String, Object>; use HashMap.put() instead.
+        raw.put("BSkyBlock", gmSection);
+        s.setGamemodeSettings(raw);
+
+        List<MobSpawnReplacement> result = s.getReplacements("BSkyBlock", "nether");
+        assert result.size() == 1;
+        MobSpawnReplacement r = result.get(0);
+        assert r.resolveOldEntityType() == EntityType.ZOMBIFIED_PIGLIN;
+        assert r.resolveNewEntityType() == EntityType.WITHER_SKELETON;
+        assert Math.abs(r.getChance() - 0.05) < 1e-9;
     }
 }
