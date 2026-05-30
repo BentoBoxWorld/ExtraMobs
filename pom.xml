@@ -55,7 +55,7 @@
                 X.Y.Z -> BentoBox core version
                 .M    -> Addon development iteration.
         -->
-        <build.version>1.14.0</build.version>
+        <build.version>1.15.0</build.version>
         <build.number>-LOCAL</build.number>
         <!-- SonarCloud -->
         <sonar.organization>bentobox-world</sonar.organization>
