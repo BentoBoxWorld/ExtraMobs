@@ -526,6 +526,8 @@ class MobsSpawnListenerTest extends CommonTestSetup {
         Map<String, Object> gmSection = Map.of(
                 "nether", List.of(rule));
         Map<String, Object> raw = new java.util.HashMap<>();
+        // Map.of("BSkyBlock", gmSection) would infer Map<String, Map<String, Object>>,
+        // which is not assignable to Map<String, Object>; use HashMap.put() instead.
         raw.put("BSkyBlock", gmSection);
         s.setGamemodeSettings(raw);
 

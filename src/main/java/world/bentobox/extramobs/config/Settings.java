@@ -291,5 +291,5 @@ public class Settings implements ConfigObject
 	@ConfigComment("          new: SHULKER")
 	@ConfigComment("          chance: 0.3")
 	@ConfigEntry(path = "gamemode-settings")
-	private Map<String, Object> gamemodeSettings = new LinkedHashMap<>();
+	private Map<String, Object> gamemodeSettings;
 }
