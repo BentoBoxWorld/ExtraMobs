@@ -1,0 +1,9 @@
+name: BentoBox-ExtraMobs
+main: world.bentobox.extramobs.ExtraMobsPladdon
+version: ${project.version}${build.number}
+api-version: "1.21"
+
+authors: [BONNe]
+contributors: ["The BentoBoxWorld Community"]
+website: https://bentobox.world
+description: ${project.description}
