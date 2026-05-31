@@ -27,8 +27,12 @@ overworld-chance:
 #   old:    EntityType name of the mob to replace (e.g. ZOMBIFIED_PIGLIN)
 #   new:    EntityType name of the replacement mob (e.g. WITHER_SKELETON)
 #   chance: Probability in the range 0.0-1.0
-# When per-gamemode rules are present for an environment, the global defaults
-# for that environment are NOT applied to that gamemode.
+# Per-gamemode rules are tried in order before the global defaults for that
+# environment. If a rule matches the spawning entity AND its chance roll
+# succeeds, the replacement is applied and processing stops for that event.
+# If no rule matches (different entity), or every matching rule's chance roll
+# fails, the global nether-chances / end-chances / overworld-chance values
+# above are applied as a fallback.
 # Example:
 # gamemode-settings:
 #   BSkyBlock:

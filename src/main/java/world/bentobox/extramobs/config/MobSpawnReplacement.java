@@ -1,6 +1,8 @@
 package world.bentobox.extramobs.config;
 
 
+import java.util.Locale;
+
 import org.bukkit.entity.EntityType;
 
 
@@ -64,7 +66,7 @@ public class MobSpawnReplacement
         }
         try
         {
-            return EntityType.valueOf(old.toUpperCase());
+            return EntityType.valueOf(old.toUpperCase(Locale.ROOT));
         }
         catch (IllegalArgumentException e)
         {
@@ -87,7 +89,7 @@ public class MobSpawnReplacement
         }
         try
         {
-            return EntityType.valueOf(newMob.toUpperCase());
+            return EntityType.valueOf(newMob.toUpperCase(Locale.ROOT));
         }
         catch (IllegalArgumentException e)
         {

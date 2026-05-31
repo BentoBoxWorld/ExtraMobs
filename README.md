@@ -75,7 +75,7 @@ All chance values are decimals between `0.0` (never) and `1.0` (always). For the
 
 ### Per-Gamemode Overrides
 
-You can define replacement rules that only apply to a specific game mode. Each gamemode may set rules for the `nether`, `end`, and/or `world` (overworld) environments. **When per-gamemode rules are present for an environment, the global defaults above are not applied for that gamemode.**
+You can define replacement rules that only apply to a specific game mode. Each gamemode may set rules for the `nether`, `end`, and/or `world` (overworld) environments. Rules are tried in order before the global defaults. **If a rule matches the spawning entity and its chance roll succeeds, the replacement is applied and processing stops; otherwise the global defaults above are used as a fallback** — so per-gamemode rules supplement the globals rather than replace them, and you can keep the globals as a safety net for any entity the per-gamemode block doesn't cover.
 
 ```yaml
 gamemode-settings:
