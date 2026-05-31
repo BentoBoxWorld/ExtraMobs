@@ -6,6 +6,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 import world.bentobox.bentobox.api.configuration.ConfigComment;
@@ -208,34 +209,40 @@ public class Settings implements ConfigObject
 
 		for (Object rawEntry : envList)
 		{
-			if (!(rawEntry instanceof Map<?, ?> entryMap))
-			{
-				continue;
-			}
-
-			Object oldVal = entryMap.get("old");
-			Object newVal = entryMap.get("new");
-			Object chanceVal = entryMap.get("chance");
-
-			if (oldVal == null || newVal == null)
-			{
-				continue;
-			}
-
-			double chance = 0.0;
-
-			if (chanceVal instanceof Number n)
-			{
-				chance = n.doubleValue();
-			}
-
-			result.add(new MobSpawnReplacement(
-				oldVal.toString(),
-				newVal.toString(),
-				chance));
+			parseReplacement(rawEntry).ifPresent(result::add);
 		}
 
 		return result;
+	}
+
+
+	/**
+	 * Parses a single raw YAML map entry into a {@link MobSpawnReplacement} when the
+	 * required {@code old} and {@code new} keys are present.  Malformed entries (not
+	 * a map, missing keys) yield an empty {@link Optional} so the caller can drop
+	 * them silently.
+	 */
+	private static Optional<MobSpawnReplacement> parseReplacement(Object rawEntry)
+	{
+		if (!(rawEntry instanceof Map<?, ?> entryMap))
+		{
+			return Optional.empty();
+		}
+
+		Object oldVal = entryMap.get("old");
+		Object newVal = entryMap.get("new");
+
+		if (oldVal == null || newVal == null)
+		{
+			return Optional.empty();
+		}
+
+		double chance = entryMap.get("chance") instanceof Number n ? n.doubleValue() : 0.0;
+
+		return Optional.of(new MobSpawnReplacement(
+			oldVal.toString(),
+			newVal.toString(),
+			chance));
 	}
 
 

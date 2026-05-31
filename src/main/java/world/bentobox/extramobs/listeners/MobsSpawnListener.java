@@ -3,6 +3,7 @@ package world.bentobox.extramobs.listeners;
 
 import java.util.Optional;
 import java.util.Random;
+import java.util.Set;
 
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -28,6 +29,34 @@ import world.bentobox.extramobs.ExtraMobsAddon;
  */
 public class MobsSpawnListener implements Listener
 {
+	private static final Set<Biome> DEEP_OCEAN_BIOMES = Set.of(
+		Biome.DEEP_OCEAN,
+		Biome.DEEP_COLD_OCEAN,
+		Biome.DEEP_FROZEN_OCEAN,
+		Biome.DEEP_LUKEWARM_OCEAN);
+
+	private static final Set<Material> NETHER_BRICKS = Set.of(
+		Material.NETHER_BRICKS,
+		Material.NETHER_BRICK_SLAB,
+		Material.NETHER_BRICK_STAIRS);
+
+	private static final Set<Material> PURPUR_BLOCKS = Set.of(
+		Material.PURPUR_BLOCK,
+		Material.PURPUR_SLAB,
+		Material.PURPUR_STAIRS);
+
+	private static final Set<Material> PRISMARINE_BLOCKS = Set.of(
+		Material.PRISMARINE,
+		Material.PRISMARINE_SLAB,
+		Material.PRISMARINE_STAIRS,
+		Material.PRISMARINE_BRICKS,
+		Material.PRISMARINE_BRICK_SLAB,
+		Material.PRISMARINE_BRICK_STAIRS,
+		Material.DARK_PRISMARINE,
+		Material.DARK_PRISMARINE_SLAB,
+		Material.DARK_PRISMARINE_STAIRS);
+
+
 	/**
 	 * Constructor MobsSpawnListener creates a new MobsSpawnListener instance.
 	 *
@@ -50,105 +79,131 @@ public class MobsSpawnListener implements Listener
 	{
 		if (event.getSpawnReason() != CreatureSpawnEvent.SpawnReason.NATURAL)
 		{
-			// Effect only natural mob spawning.
 			return;
 		}
 
 		World world = event.getLocation().getWorld();
+		String gameModeName = this.resolveActiveGameMode(world);
 
-		Optional<GameModeAddon> optionalAddon =
-			this.addon.getPlugin().getIWM().getAddon(world);
-
-		if (!optionalAddon.isPresent() ||
-                (!this.addon.getSettings().getDisabledGameModes().isEmpty()
-                        &&
-				this.addon.getSettings().getDisabledGameModes().contains(
-					optionalAddon.get().getDescription().getName())))
+		if (gameModeName == null)
 		{
-			// GameMode addon is not in enable list.
 			return;
 		}
 
-		String gameModeName = optionalAddon.get().getDescription().getName();
+		EntityType entityType = event.getEntityType();
 
-        if ((event.getEntityType().equals(EntityType.ZOMBIFIED_PIGLIN)
-                || event.getEntityType().equals(EntityType.PIGLIN))
-                && this.addon.getPlugin().getIWM().isIslandNether(world))
+		if (this.isPiglin(entityType) && this.addon.getPlugin().getIWM().isIslandNether(world))
 		{
-			// replace pigmen with blaze or wither
-			if (this.isSuitableNetherLocation(event.getLocation()))
-			{
-				if (this.applyGameModeReplacements(event, gameModeName, "nether"))
-				{
-					return;
-				}
-
-				// Fall back to global settings
-				if (this.spawningRandom.nextDouble() < this.addon.getSettings().getWitherSkeletonChance())
-				{
-					// oOo wither skeleton got lucky.
-					this.summonEntity(event.getLocation(), EntityType.WITHER_SKELETON);
-					event.setCancelled(true);
-				}
-				else if (this.spawningRandom.nextDouble() < this.addon.getSettings().getBlazeChance())
-				{
-					// oOo blaze got lucky.
-					this.summonEntity(event.getLocation(), EntityType.BLAZE);
-					event.setCancelled(true);
-				}
-			}
+			this.handleNetherSpawn(event, gameModeName);
 		}
-		else if (event.getEntityType() == EntityType.ENDERMAN &&
-			this.addon.getPlugin().getIWM().isIslandEnd(world))
+		else if (entityType == EntityType.ENDERMAN && this.addon.getPlugin().getIWM().isIslandEnd(world))
 		{
-			// replace enderman with shulker
-			if (this.isSuitableEndLocation(event.getLocation()))
-			{
-				if (this.applyGameModeReplacements(event, gameModeName, "end"))
-				{
-					return;
-				}
-
-				// Fall back to global settings
-				if (this.spawningRandom.nextDouble() < this.addon.getSettings().getShulkerChance())
-				{
-					// oOo shulker got lucky.
-					this.summonEntity(event.getLocation(), EntityType.SHULKER);
-					event.setCancelled(true);
-				}
-			}
+			this.handleEndSpawn(event, gameModeName);
 		}
-        else if (world.getEnvironment() == World.Environment.NORMAL && event.getEntity() instanceof Fish)
+		else if (world.getEnvironment() == World.Environment.NORMAL && event.getEntity() instanceof Fish)
 		{
-			// Check biome
-			Biome biome = world.getBiome(
-				event.getLocation().getBlockX(),
-				event.getLocation().getBlockY(),
-				event.getLocation().getBlockZ());
+			this.handleOverworldSpawn(event, world, gameModeName);
+		}
+	}
 
-			if (biome == Biome.DEEP_OCEAN ||
-				biome == Biome.DEEP_COLD_OCEAN ||
-				biome == Biome.DEEP_FROZEN_OCEAN ||
-				biome == Biome.DEEP_LUKEWARM_OCEAN)
-			{
-				// Monuments are located only in Deep Ocean. So guardians will spawn there.
 
-				if (this.isSuitableGuardianLocation(event.getLocation()))
-				{
-					if (this.applyGameModeReplacements(event, gameModeName, "world"))
-					{
-						return;
-					}
+	/**
+	 * Resolves the GameMode addon that owns the given world, or {@code null} if no
+	 * GameMode applies or the GameMode is in the {@code disabled-gamemodes} list.
+	 */
+	private String resolveActiveGameMode(World world)
+	{
+		Optional<GameModeAddon> optionalAddon = this.addon.getPlugin().getIWM().getAddon(world);
 
-					// Fall back to global settings
-					if (this.spawningRandom.nextDouble() < this.addon.getSettings().getGuardianChance())
-					{
-						// oOo guardian got lucky.
-						this.summonEntity(event.getLocation(), EntityType.GUARDIAN);
-						event.setCancelled(true);
-					}
-				}
-			}
+		if (optionalAddon.isEmpty())
+		{
+			return null;
+		}
+
+		String name = optionalAddon.get().getDescription().getName();
+
+		if (this.addon.getSettings().getDisabledGameModes().contains(name))
+		{
+			return null;
+		}
+
+		return name;
+	}
+
+
+	private boolean isPiglin(EntityType type)
+	{
+		return type == EntityType.ZOMBIFIED_PIGLIN || type == EntityType.PIGLIN;
+	}
+
+
+	private void handleNetherSpawn(CreatureSpawnEvent event, String gameModeName)
+	{
+		if (!this.isSuitableNetherLocation(event.getLocation()))
+		{
+			return;
+		}
+
+		if (this.applyGameModeReplacements(event, gameModeName, "nether"))
+		{
+			return;
+		}
+
+		if (this.spawningRandom.nextDouble() < this.addon.getSettings().getWitherSkeletonChance())
+		{
+			this.summonEntity(event.getLocation(), EntityType.WITHER_SKELETON);
+			event.setCancelled(true);
+		}
+		else if (this.spawningRandom.nextDouble() < this.addon.getSettings().getBlazeChance())
+		{
+			this.summonEntity(event.getLocation(), EntityType.BLAZE);
+			event.setCancelled(true);
+		}
+	}
+
+
+	private void handleEndSpawn(CreatureSpawnEvent event, String gameModeName)
+	{
+		if (!this.isSuitableEndLocation(event.getLocation()))
+		{
+			return;
+		}
+
+		if (this.applyGameModeReplacements(event, gameModeName, "end"))
+		{
+			return;
+		}
+
+		if (this.spawningRandom.nextDouble() < this.addon.getSettings().getShulkerChance())
+		{
+			this.summonEntity(event.getLocation(), EntityType.SHULKER);
+			event.setCancelled(true);
+		}
+	}
+
+
+	private void handleOverworldSpawn(CreatureSpawnEvent event, World world, String gameModeName)
+	{
+		Biome biome = world.getBiome(
+			event.getLocation().getBlockX(),
+			event.getLocation().getBlockY(),
+			event.getLocation().getBlockZ());
+
+		// Monuments are located only in Deep Ocean. So guardians will spawn there.
+		if (!DEEP_OCEAN_BIOMES.contains(biome) || !this.isSuitableGuardianLocation(event.getLocation()))
+		{
+			return;
+		}
+
+		if (this.applyGameModeReplacements(event, gameModeName, "world"))
+		{
+			return;
+		}
+
+		if (this.spawningRandom.nextDouble() < this.addon.getSettings().getGuardianChance())
+		{
+			this.summonEntity(event.getLocation(), EntityType.GUARDIAN);
+			event.setCancelled(true);
 		}
 	}
 
@@ -161,11 +216,7 @@ public class MobsSpawnListener implements Listener
 	 */
 	private boolean isSuitableNetherLocation(Location location)
 	{
-		Material material = location.getBlock().getRelative(BlockFace.DOWN).getType();
-
-		return material == Material.NETHER_BRICKS ||
-			material == Material.NETHER_BRICK_SLAB ||
-			material == Material.NETHER_BRICK_STAIRS;
+		return NETHER_BRICKS.contains(location.getBlock().getRelative(BlockFace.DOWN).getType());
 	}
 
 
@@ -176,11 +227,7 @@ public class MobsSpawnListener implements Listener
 	 */
 	private boolean isSuitableEndLocation(Location location)
 	{
-		Material material = location.getBlock().getRelative(BlockFace.DOWN).getType();
-
-		return material == Material.PURPUR_BLOCK ||
-			material == Material.PURPUR_SLAB ||
-			material == Material.PURPUR_STAIRS;
+		return PURPUR_BLOCKS.contains(location.getBlock().getRelative(BlockFace.DOWN).getType());
 	}
 
 
@@ -191,26 +238,14 @@ public class MobsSpawnListener implements Listener
 	 */
 	private boolean isSuitableGuardianLocation(Location location)
 	{
-		// Current block
 		Block block = location.getBlock();
 
-		while (block != null && block.getType() == Material.WATER)
+		while (block.getType() == Material.WATER)
 		{
-			// Find first top block that is not a water.
 			block = block.getRelative(BlockFace.UP);
 		}
 
-		Material material = block.getType();
-
-		return material == Material.PRISMARINE ||
-			material == Material.PRISMARINE_SLAB ||
-			material == Material.PRISMARINE_STAIRS ||
-			material == Material.PRISMARINE_BRICKS ||
-			material == Material.PRISMARINE_BRICK_SLAB ||
-			material == Material.PRISMARINE_BRICK_STAIRS ||
-			material == Material.DARK_PRISMARINE ||
-			material == Material.DARK_PRISMARINE_SLAB ||
-			material == Material.DARK_PRISMARINE_STAIRS;
+		return PRISMARINE_BLOCKS.contains(block.getType());
 	}
 
 
@@ -242,8 +277,8 @@ public class MobsSpawnListener implements Listener
 
 		for (var rule : rules)
 		{
-			org.bukkit.entity.EntityType oldType = rule.resolveOldEntityType();
-			org.bukkit.entity.EntityType newType = rule.resolveNewEntityType();
+			EntityType oldType = rule.resolveOldEntityType();
+			EntityType newType = rule.resolveNewEntityType();
 
 			if (oldType == null || newType == null)
 			{

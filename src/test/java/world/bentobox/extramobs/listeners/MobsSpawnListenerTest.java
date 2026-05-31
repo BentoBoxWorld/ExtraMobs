@@ -1,5 +1,7 @@
 package world.bentobox.extramobs.listeners;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -509,9 +511,9 @@ class MobsSpawnListenerTest extends CommonTestSetup {
     void testGetReplacementsNullInputs() {
         Settings s = new Settings();
         // All null/empty paths should return empty list without NPE
-        assert s.getReplacements(null, "nether").isEmpty();
-        assert s.getReplacements("BSkyBlock", null).isEmpty();
-        assert s.getReplacements("BSkyBlock", "nether").isEmpty();
+        assertTrue(s.getReplacements(null, "nether").isEmpty());
+        assertTrue(s.getReplacements("BSkyBlock", null).isEmpty());
+        assertTrue(s.getReplacements("BSkyBlock", "nether").isEmpty());
     }
 
     @Test
@@ -532,10 +534,10 @@ class MobsSpawnListenerTest extends CommonTestSetup {
         s.setGamemodeSettings(raw);
 
         List<MobSpawnReplacement> result = s.getReplacements("BSkyBlock", "nether");
-        assert result.size() == 1;
+        assertEquals(1, result.size());
         MobSpawnReplacement r = result.get(0);
-        assert r.resolveOldEntityType() == EntityType.ZOMBIFIED_PIGLIN;
-        assert r.resolveNewEntityType() == EntityType.WITHER_SKELETON;
-        assert Math.abs(r.getChance() - 0.05) < 1e-9;
+        assertEquals(EntityType.ZOMBIFIED_PIGLIN, r.resolveOldEntityType());
+        assertEquals(EntityType.WITHER_SKELETON, r.resolveNewEntityType());
+        assertEquals(0.05, r.getChance(), 1e-9);
     }
 }
