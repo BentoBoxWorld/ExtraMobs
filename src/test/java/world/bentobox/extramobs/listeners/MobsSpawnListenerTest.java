@@ -1,13 +1,19 @@
 package world.bentobox.extramobs.listeners;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -16,155 +22,522 @@ import org.bukkit.block.Biome;
 import org.bukkit.block.Block;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Fish;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.event.entity.CreatureSpawnEvent;
-import org.eclipse.jdt.annotation.NonNull;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
-import org.mockito.Mockito;
-import org.powermock.modules.junit4.PowerMockRunner;
 
-import world.bentobox.bentobox.BentoBox;
 import world.bentobox.bentobox.api.addons.AddonDescription;
 import world.bentobox.bentobox.api.addons.GameModeAddon;
-import world.bentobox.bentobox.api.user.User;
-import world.bentobox.bentobox.managers.IslandWorldManager;
+import world.bentobox.extramobs.CommonTestSetup;
 import world.bentobox.extramobs.ExtraMobsAddon;
+import world.bentobox.extramobs.config.MobSpawnReplacement;
 import world.bentobox.extramobs.config.Settings;
-import world.bentobox.extramobs.listeners.mocks.ServerMocks;
 
-@RunWith(PowerMockRunner.class)
-public class MobsSpawnListenerTest {
+/**
+ * Tests for {@link MobsSpawnListener}.
+ */
+class MobsSpawnListenerTest extends CommonTestSetup {
 
     @Mock
     private ExtraMobsAddon addon;
-
+    @Mock
+    private Settings settings;
     @Mock
     private CreatureSpawnEvent event;
-
     @Mock
-    private World world;
+    private Block standingBlock;
+    @Mock
+    private Block blockBelow;
+    @Mock
+    private GameModeAddon gameModeAddon;
 
     private MobsSpawnListener listener;
 
-    private Settings settings;
-
-    @Mock
-    private BentoBox plugin;
-
-    @Mock
-    private IslandWorldManager iwm;
-
-    @Mock
-    private GameModeAddon gma;
-
-    @Mock
-    private Location location;
-
-    @Mock
-    private Block block;
-
-    @Before
-    public void setUp() {
-        ServerMocks.newServer();
-        settings = new Settings();
-        when(addon.getSettings()).thenReturn(settings);
+    @Override
+    @BeforeEach
+    public void setUp() throws Exception {
+        super.setUp();
 
         when(addon.getPlugin()).thenReturn(plugin);
+        when(addon.getSettings()).thenReturn(settings);
+        when(settings.getDisabledGameModes()).thenReturn(Collections.emptySet());
+        when(settings.getWitherSkeletonChance()).thenReturn(0.0);
+        when(settings.getBlazeChance()).thenReturn(0.0);
+        when(settings.getShulkerChance()).thenReturn(0.0);
+        when(settings.getGuardianChance()).thenReturn(0.0);
+        // Default: no per-gamemode rules configured
+        when(settings.getReplacements(any(), any())).thenReturn(Collections.emptyList());
 
-        when(plugin.getIWM()).thenReturn(iwm);
+        // GameMode resolved by default
+        AddonDescription desc = new AddonDescription.Builder("main.Class", "BSkyBlock", "1.0").build();
+        when(gameModeAddon.getDescription()).thenReturn(desc);
+        when(iwm.getAddon(world)).thenReturn(Optional.of(gameModeAddon));
 
-        when(iwm.getAddon(world)).thenReturn(Optional.of(gma));
+        // Event basics
+        when(event.getLocation()).thenReturn(location);
+        when(event.getSpawnReason()).thenReturn(CreatureSpawnEvent.SpawnReason.NATURAL);
 
-        when(iwm.isIslandEnd(world)).thenReturn(true);
-        when(iwm.isIslandNether(world)).thenReturn(true);
+        // Location resolves to mocked world + the standing block
+        when(location.getBlock()).thenReturn(standingBlock);
+        when(standingBlock.getRelative(org.bukkit.block.BlockFace.DOWN)).thenReturn(blockBelow);
+        when(blockBelow.getType()).thenReturn(Material.AIR);
 
-        @NonNull
-        AddonDescription desc = new AddonDescription.Builder("main", "bskyblock", "1.0.0").build();
-
-        when(gma.getDescription()).thenReturn(desc);
-
-        // Location
-        when(location.getBlock()).thenReturn(block);
-        when(location.getWorld()).thenReturn(world);
-
-        when(block.getRelative(any())).thenReturn(block);
-
-        when(block.getType()).thenReturn(Material.STONE);
-
-        // Initialize mocks and the class to test
         listener = new MobsSpawnListener(addon);
     }
 
-    @After
-    public void tearDown() {
-        ServerMocks.unsetBukkitServer();
-        User.clearUsers();
-        Mockito.framework().clearInlineMocks();
-    }
+    // ── Guard clauses ──────────────────────────────────────────────────────
 
-    // Test case for natural spawning of Zombified Piglin in the Nether
     @Test
-    public void testNaturalSpawnZombifiedPiglinNether() {
+    void testNonNaturalSpawnIgnored() {
+        when(event.getSpawnReason()).thenReturn(CreatureSpawnEvent.SpawnReason.SPAWNER);
         when(event.getEntityType()).thenReturn(EntityType.ZOMBIFIED_PIGLIN);
-        when(event.getSpawnReason()).thenReturn(CreatureSpawnEvent.SpawnReason.NATURAL);
-        when(event.getLocation()).thenReturn(location);
-        when(world.getEnvironment()).thenReturn(World.Environment.NETHER);
-        when(addon.getPlugin().getIWM().isIslandNether(world)).thenReturn(true);
-        settings.setWitherSkeletonChance(1.1); // Set so that it will always spawn
-        when(block.getType()).thenReturn(Material.NETHER_BRICKS);
+        when(iwm.isIslandNether(world)).thenReturn(true);
+        when(settings.getWitherSkeletonChance()).thenReturn(1.0);
 
         listener.onEntitySpawn(event);
 
-        verify(event).setCancelled(true);
-        // Additional verifications can be added to check if the correct entity was spawned
+        verify(world, never()).spawnEntity(any(Location.class), any(EntityType.class));
+        verify(event, never()).setCancelled(true);
     }
 
-    // Test case for natural spawning of Enderman in the End
     @Test
-    public void testNaturalSpawnEndermanEnd() {
+    void testNoGameModeIgnored() {
+        when(iwm.getAddon(world)).thenReturn(Optional.empty());
+        when(event.getEntityType()).thenReturn(EntityType.ZOMBIFIED_PIGLIN);
+        when(iwm.isIslandNether(world)).thenReturn(true);
+        when(settings.getWitherSkeletonChance()).thenReturn(1.0);
+
+        listener.onEntitySpawn(event);
+
+        verify(world, never()).spawnEntity(any(Location.class), any(EntityType.class));
+    }
+
+    @Test
+    void testDisabledGameModeIgnored() {
+        when(settings.getDisabledGameModes()).thenReturn(Set.of("BSkyBlock"));
+        when(event.getEntityType()).thenReturn(EntityType.ZOMBIFIED_PIGLIN);
+        when(iwm.isIslandNether(world)).thenReturn(true);
+        when(settings.getWitherSkeletonChance()).thenReturn(1.0);
+
+        listener.onEntitySpawn(event);
+
+        verify(world, never()).spawnEntity(any(Location.class), any(EntityType.class));
+    }
+
+    // ── Nether: piglin → wither skeleton / blaze ───────────────────────────
+
+    @Test
+    void testZombifiedPiglinOnNetherBrickReplacedWithWitherSkeleton() {
+        when(event.getEntityType()).thenReturn(EntityType.ZOMBIFIED_PIGLIN);
+        when(iwm.isIslandNether(world)).thenReturn(true);
+        when(blockBelow.getType()).thenReturn(Material.NETHER_BRICKS);
+        when(settings.getWitherSkeletonChance()).thenReturn(1.0);
+
+        listener.onEntitySpawn(event);
+
+        verify(world).spawnEntity(location, EntityType.WITHER_SKELETON);
+        verify(event).setCancelled(true);
+    }
+
+    @Test
+    void testPiglinOnNetherBrickReplacedWithWitherSkeleton() {
+        when(event.getEntityType()).thenReturn(EntityType.PIGLIN);
+        when(iwm.isIslandNether(world)).thenReturn(true);
+        when(blockBelow.getType()).thenReturn(Material.NETHER_BRICKS);
+        when(settings.getWitherSkeletonChance()).thenReturn(1.0);
+
+        listener.onEntitySpawn(event);
+
+        verify(world).spawnEntity(location, EntityType.WITHER_SKELETON);
+        verify(event).setCancelled(true);
+    }
+
+    @Test
+    void testPiglinOnNetherBrickSlabReplacedWithBlazeWhenWitherFails() {
+        when(event.getEntityType()).thenReturn(EntityType.ZOMBIFIED_PIGLIN);
+        when(iwm.isIslandNether(world)).thenReturn(true);
+        when(blockBelow.getType()).thenReturn(Material.NETHER_BRICK_SLAB);
+        when(settings.getWitherSkeletonChance()).thenReturn(0.0);
+        when(settings.getBlazeChance()).thenReturn(1.0);
+
+        listener.onEntitySpawn(event);
+
+        verify(world).spawnEntity(location, EntityType.BLAZE);
+        verify(event).setCancelled(true);
+    }
+
+    @Test
+    void testPiglinOnNetherBrickStairsAcceptedForReplacement() {
+        when(event.getEntityType()).thenReturn(EntityType.ZOMBIFIED_PIGLIN);
+        when(iwm.isIslandNether(world)).thenReturn(true);
+        when(blockBelow.getType()).thenReturn(Material.NETHER_BRICK_STAIRS);
+        when(settings.getWitherSkeletonChance()).thenReturn(1.0);
+
+        listener.onEntitySpawn(event);
+
+        verify(world).spawnEntity(location, EntityType.WITHER_SKELETON);
+    }
+
+    @Test
+    void testPiglinOnNonNetherBrickNotReplaced() {
+        when(event.getEntityType()).thenReturn(EntityType.ZOMBIFIED_PIGLIN);
+        when(iwm.isIslandNether(world)).thenReturn(true);
+        when(blockBelow.getType()).thenReturn(Material.STONE);
+        when(settings.getWitherSkeletonChance()).thenReturn(1.0);
+        when(settings.getBlazeChance()).thenReturn(1.0);
+
+        listener.onEntitySpawn(event);
+
+        verify(world, never()).spawnEntity(any(Location.class), any(EntityType.class));
+        verify(event, never()).setCancelled(true);
+    }
+
+    @Test
+    void testPiglinNotInNetherSkipsBranch() {
+        when(event.getEntityType()).thenReturn(EntityType.ZOMBIFIED_PIGLIN);
+        when(iwm.isIslandNether(world)).thenReturn(false);
+        when(blockBelow.getType()).thenReturn(Material.NETHER_BRICKS);
+        when(settings.getWitherSkeletonChance()).thenReturn(1.0);
+
+        listener.onEntitySpawn(event);
+
+        verify(world, never()).spawnEntity(any(Location.class), any(EntityType.class));
+    }
+
+    @Test
+    void testPiglinChanceZeroNoReplacement() {
+        when(event.getEntityType()).thenReturn(EntityType.ZOMBIFIED_PIGLIN);
+        when(iwm.isIslandNether(world)).thenReturn(true);
+        when(blockBelow.getType()).thenReturn(Material.NETHER_BRICKS);
+        // both chances are 0.0 from setUp
+
+        listener.onEntitySpawn(event);
+
+        verify(world, never()).spawnEntity(any(Location.class), any(EntityType.class));
+        verify(event, never()).setCancelled(true);
+    }
+
+    // ── End: enderman → shulker ────────────────────────────────────────────
+
+    @Test
+    void testEndermanOnPurpurReplacedWithShulker() {
         when(event.getEntityType()).thenReturn(EntityType.ENDERMAN);
-        when(event.getSpawnReason()).thenReturn(CreatureSpawnEvent.SpawnReason.NATURAL);
-        when(event.getLocation()).thenReturn(location);
-        when(world.getEnvironment()).thenReturn(World.Environment.THE_END);
-        when(addon.getPlugin().getIWM().isIslandEnd(world)).thenReturn(true);
-        settings.setShulkerChance(1.1); // Set so that it will always spawn
-        when(block.getType()).thenReturn(Material.PURPUR_BLOCK);
+        when(iwm.isIslandEnd(world)).thenReturn(true);
+        when(blockBelow.getType()).thenReturn(Material.PURPUR_BLOCK);
+        when(settings.getShulkerChance()).thenReturn(1.0);
 
         listener.onEntitySpawn(event);
 
+        verify(world).spawnEntity(location, EntityType.SHULKER);
         verify(event).setCancelled(true);
-        // Additional verifications can be added to check if the correct entity was spawned
     }
 
-    // Test case for spawning of Fish in Deep Ocean biome
     @Test
-    public void testFishSpawnDeepOcean() {
+    void testEndermanOnPurpurSlabAccepted() {
+        when(event.getEntityType()).thenReturn(EntityType.ENDERMAN);
+        when(iwm.isIslandEnd(world)).thenReturn(true);
+        when(blockBelow.getType()).thenReturn(Material.PURPUR_SLAB);
+        when(settings.getShulkerChance()).thenReturn(1.0);
+
+        listener.onEntitySpawn(event);
+
+        verify(world).spawnEntity(location, EntityType.SHULKER);
+    }
+
+    @Test
+    void testEndermanOnPurpurStairsAccepted() {
+        when(event.getEntityType()).thenReturn(EntityType.ENDERMAN);
+        when(iwm.isIslandEnd(world)).thenReturn(true);
+        when(blockBelow.getType()).thenReturn(Material.PURPUR_STAIRS);
+        when(settings.getShulkerChance()).thenReturn(1.0);
+
+        listener.onEntitySpawn(event);
+
+        verify(world).spawnEntity(location, EntityType.SHULKER);
+    }
+
+    @Test
+    void testEndermanOnNonPurpurNotReplaced() {
+        when(event.getEntityType()).thenReturn(EntityType.ENDERMAN);
+        when(iwm.isIslandEnd(world)).thenReturn(true);
+        when(blockBelow.getType()).thenReturn(Material.END_STONE);
+        when(settings.getShulkerChance()).thenReturn(1.0);
+
+        listener.onEntitySpawn(event);
+
+        verify(world, never()).spawnEntity(any(Location.class), any(EntityType.class));
+    }
+
+    @Test
+    void testEndermanNotInEndSkipsBranch() {
+        when(event.getEntityType()).thenReturn(EntityType.ENDERMAN);
+        when(iwm.isIslandEnd(world)).thenReturn(false);
+        when(blockBelow.getType()).thenReturn(Material.PURPUR_BLOCK);
+        when(settings.getShulkerChance()).thenReturn(1.0);
+
+        listener.onEntitySpawn(event);
+
+        verify(world, never()).spawnEntity(any(Location.class), any(EntityType.class));
+    }
+
+    @Test
+    void testEndermanChanceZeroNoReplacement() {
+        when(event.getEntityType()).thenReturn(EntityType.ENDERMAN);
+        when(iwm.isIslandEnd(world)).thenReturn(true);
+        when(blockBelow.getType()).thenReturn(Material.PURPUR_BLOCK);
+
+        listener.onEntitySpawn(event);
+
+        verify(world, never()).spawnEntity(any(Location.class), any(EntityType.class));
+    }
+
+    // ── Overworld: fish → guardian ─────────────────────────────────────────
+
+    private Block prepareWaterColumnTopped(Material topMaterial) {
+        Block water = mock(Block.class);
+        when(water.getType()).thenReturn(Material.WATER);
+        Block top = mock(Block.class);
+        when(top.getType()).thenReturn(topMaterial);
+        when(water.getRelative(org.bukkit.block.BlockFace.UP)).thenReturn(top);
+        when(location.getBlock()).thenReturn(water);
+        return top;
+    }
+
+    private void prepareFishEvent(Biome biome) {
         Fish fish = mock(Fish.class);
         when(event.getEntity()).thenReturn(fish);
-        when(event.getEntityType()).thenReturn(EntityType.TROPICAL_FISH);
-        when(event.getSpawnReason()).thenReturn(CreatureSpawnEvent.SpawnReason.NATURAL);
-        when(event.getLocation()).thenReturn(location);
+        when(event.getEntityType()).thenReturn(EntityType.COD);
         when(world.getEnvironment()).thenReturn(World.Environment.NORMAL);
-        settings.setGuardianChance(1.1); // Set so that it will always spawn
-        when(block.getType()).thenReturn(Material.WATER, Material.WATER, Material.WATER, Material.PRISMARINE);
-
-        listener.onEntitySpawn(event);
-
-        verify(event).setCancelled(true);
-        // Additional verifications for guardian spawning
+        when(world.getBiome(0, 0, 0)).thenReturn(biome);
     }
 
-    // Test case for non-natural spawning
     @Test
-    public void testNonNaturalSpawn() {
-        when(event.getSpawnReason()).thenReturn(CreatureSpawnEvent.SpawnReason.SPAWNER);
+    void testFishInDeepOceanOverPrismarineReplacedWithGuardian() {
+        prepareFishEvent(Biome.DEEP_OCEAN);
+        prepareWaterColumnTopped(Material.PRISMARINE);
+        when(settings.getGuardianChance()).thenReturn(1.0);
 
         listener.onEntitySpawn(event);
 
-        verify(event, never()).isCancelled();
+        verify(world).spawnEntity(location, EntityType.GUARDIAN);
+        verify(event).setCancelled(true);
     }
 
+    @Test
+    void testFishInDeepColdOceanOverDarkPrismarineReplacedWithGuardian() {
+        prepareFishEvent(Biome.DEEP_COLD_OCEAN);
+        prepareWaterColumnTopped(Material.DARK_PRISMARINE);
+        when(settings.getGuardianChance()).thenReturn(1.0);
+
+        listener.onEntitySpawn(event);
+
+        verify(world).spawnEntity(location, EntityType.GUARDIAN);
+    }
+
+    @Test
+    void testFishInDeepFrozenOceanOverPrismarineBricksReplacedWithGuardian() {
+        prepareFishEvent(Biome.DEEP_FROZEN_OCEAN);
+        prepareWaterColumnTopped(Material.PRISMARINE_BRICKS);
+        when(settings.getGuardianChance()).thenReturn(1.0);
+
+        listener.onEntitySpawn(event);
+
+        verify(world).spawnEntity(location, EntityType.GUARDIAN);
+    }
+
+    @Test
+    void testFishInDeepLukewarmOceanOverPrismarineSlabReplacedWithGuardian() {
+        prepareFishEvent(Biome.DEEP_LUKEWARM_OCEAN);
+        prepareWaterColumnTopped(Material.PRISMARINE_SLAB);
+        when(settings.getGuardianChance()).thenReturn(1.0);
+
+        listener.onEntitySpawn(event);
+
+        verify(world).spawnEntity(location, EntityType.GUARDIAN);
+    }
+
+    @Test
+    void testFishInShallowOceanNotReplaced() {
+        prepareFishEvent(Biome.OCEAN);
+        prepareWaterColumnTopped(Material.PRISMARINE);
+        when(settings.getGuardianChance()).thenReturn(1.0);
+
+        listener.onEntitySpawn(event);
+
+        verify(world, never()).spawnEntity(any(Location.class), eq(EntityType.GUARDIAN));
+    }
+
+    @Test
+    void testFishOverNonPrismarineNotReplaced() {
+        prepareFishEvent(Biome.DEEP_OCEAN);
+        prepareWaterColumnTopped(Material.SAND);
+        when(settings.getGuardianChance()).thenReturn(1.0);
+
+        listener.onEntitySpawn(event);
+
+        verify(world, never()).spawnEntity(any(Location.class), any(EntityType.class));
+    }
+
+    @Test
+    void testFishChanceZeroNoReplacement() {
+        prepareFishEvent(Biome.DEEP_OCEAN);
+        prepareWaterColumnTopped(Material.PRISMARINE);
+
+        listener.onEntitySpawn(event);
+
+        verify(world, never()).spawnEntity(any(Location.class), any(EntityType.class));
+    }
+
+    @Test
+    void testNonFishInNormalWorldIgnored() {
+        LivingEntity zombie = mock(LivingEntity.class);
+        when(event.getEntity()).thenReturn(zombie);
+        when(event.getEntityType()).thenReturn(EntityType.ZOMBIE);
+        when(world.getEnvironment()).thenReturn(World.Environment.NORMAL);
+        when(settings.getGuardianChance()).thenReturn(1.0);
+
+        listener.onEntitySpawn(event);
+
+        verify(world, never()).spawnEntity(any(Location.class), any(EntityType.class));
+    }
+
+    // ── Per-gamemode settings ──────────────────────────────────────────────
+
+    /**
+     * Helper: stubs settings.getReplacements(gameModeName, env) to return rules
+     * and ensures global chance methods return 0 so they cannot fire.
+     */
+    private void stubGameModeReplacement(String env, String oldMob, String newMob, double chance) {
+        MobSpawnReplacement rule = new MobSpawnReplacement(oldMob, newMob, chance);
+        when(settings.getReplacements("BSkyBlock", env)).thenReturn(List.of(rule));
+        // Ensure all global fallbacks are 0 so they cannot trigger
+        when(settings.getWitherSkeletonChance()).thenReturn(0.0);
+        when(settings.getBlazeChance()).thenReturn(0.0);
+        when(settings.getShulkerChance()).thenReturn(0.0);
+        when(settings.getGuardianChance()).thenReturn(0.0);
+    }
+
+    @Test
+    void testPerGameModeNetherReplacement() {
+        stubGameModeReplacement("nether", "ZOMBIFIED_PIGLIN", "BLAZE", 1.0);
+        when(event.getEntityType()).thenReturn(EntityType.ZOMBIFIED_PIGLIN);
+        when(iwm.isIslandNether(world)).thenReturn(true);
+        when(blockBelow.getType()).thenReturn(Material.NETHER_BRICKS);
+
+        listener.onEntitySpawn(event);
+
+        verify(world).spawnEntity(location, EntityType.BLAZE);
+        verify(event).setCancelled(true);
+    }
+
+    @Test
+    void testPerGameModeNetherReplacementEntityMismatchFallsBackToGlobal() {
+        // Rule targets ENDERMAN (wrong entity for the nether branch), chance 1.0
+        stubGameModeReplacement("nether", "ENDERMAN", "SHULKER", 1.0);
+        // Enable global wither-skeleton so it fires as fallback
+        when(settings.getWitherSkeletonChance()).thenReturn(1.0);
+
+        when(event.getEntityType()).thenReturn(EntityType.ZOMBIFIED_PIGLIN);
+        when(iwm.isIslandNether(world)).thenReturn(true);
+        when(blockBelow.getType()).thenReturn(Material.NETHER_BRICKS);
+
+        listener.onEntitySpawn(event);
+
+        // Per-gamemode rule does not match → global wither-skeleton fires
+        verify(world).spawnEntity(location, EntityType.WITHER_SKELETON);
+        verify(event).setCancelled(true);
+    }
+
+    @Test
+    void testPerGameModeNetherChanceZeroFallsBackToGlobal() {
+        stubGameModeReplacement("nether", "ZOMBIFIED_PIGLIN", "BLAZE", 0.0);
+        when(settings.getWitherSkeletonChance()).thenReturn(1.0);
+
+        when(event.getEntityType()).thenReturn(EntityType.ZOMBIFIED_PIGLIN);
+        when(iwm.isIslandNether(world)).thenReturn(true);
+        when(blockBelow.getType()).thenReturn(Material.NETHER_BRICKS);
+
+        listener.onEntitySpawn(event);
+
+        // Per-gamemode chance is 0 → rule not applied → global fires
+        verify(world).spawnEntity(location, EntityType.WITHER_SKELETON);
+    }
+
+    @Test
+    void testPerGameModeEndReplacement() {
+        stubGameModeReplacement("end", "ENDERMAN", "SHULKER", 1.0);
+        when(event.getEntityType()).thenReturn(EntityType.ENDERMAN);
+        when(iwm.isIslandEnd(world)).thenReturn(true);
+        when(blockBelow.getType()).thenReturn(Material.PURPUR_BLOCK);
+
+        listener.onEntitySpawn(event);
+
+        verify(world).spawnEntity(location, EntityType.SHULKER);
+        verify(event).setCancelled(true);
+    }
+
+    @Test
+    void testPerGameModeEndInvalidMobNameSkipped() {
+        // Both old and new names are invalid entity types
+        MobSpawnReplacement bad = new MobSpawnReplacement("INVALID_MOB", "ALSO_INVALID", 1.0);
+        when(settings.getReplacements("BSkyBlock", "end")).thenReturn(List.of(bad));
+        when(settings.getShulkerChance()).thenReturn(1.0);
+
+        when(event.getEntityType()).thenReturn(EntityType.ENDERMAN);
+        when(iwm.isIslandEnd(world)).thenReturn(true);
+        when(blockBelow.getType()).thenReturn(Material.PURPUR_BLOCK);
+
+        listener.onEntitySpawn(event);
+
+        // Invalid rule is skipped → global shulker fires
+        verify(world).spawnEntity(location, EntityType.SHULKER);
+    }
+
+    @Test
+    void testPerGameModeWorldReplacement() {
+        stubGameModeReplacement("world", "COD", "GUARDIAN", 1.0);
+        prepareFishEvent(Biome.DEEP_OCEAN);
+        prepareWaterColumnTopped(Material.PRISMARINE);
+
+        listener.onEntitySpawn(event);
+
+        verify(world).spawnEntity(location, EntityType.GUARDIAN);
+        verify(event).setCancelled(true);
+    }
+
+    @Test
+    void testGetReplacementsNullInputs() {
+        Settings s = new Settings();
+        // All null/empty paths should return empty list without NPE
+        assertTrue(s.getReplacements(null, "nether").isEmpty());
+        assertTrue(s.getReplacements("BSkyBlock", null).isEmpty());
+        assertTrue(s.getReplacements("BSkyBlock", "nether").isEmpty());
+    }
+
+    @Test
+    void testGetReplacementsParsesRawMap() {
+        Settings s = new Settings();
+        // Build the same structure that BentoBox/snakeyaml would produce when
+        // loading the YAML from config.
+        Map<String, Object> rule = Map.of(
+                "old", "ZOMBIFIED_PIGLIN",
+                "new", "WITHER_SKELETON",
+                "chance", 0.05);
+        Map<String, Object> gmSection = Map.of(
+                "nether", List.of(rule));
+        Map<String, Object> raw = new java.util.HashMap<>();
+        // Map.of("BSkyBlock", gmSection) would infer Map<String, Map<String, Object>>,
+        // which is not assignable to Map<String, Object>; use HashMap.put() instead.
+        raw.put("BSkyBlock", gmSection);
+        s.setGamemodeSettings(raw);
+
+        List<MobSpawnReplacement> result = s.getReplacements("BSkyBlock", "nether");
+        assertEquals(1, result.size());
+        MobSpawnReplacement r = result.get(0);
+        assertEquals(EntityType.ZOMBIFIED_PIGLIN, r.resolveOldEntityType());
+        assertEquals(EntityType.WITHER_SKELETON, r.resolveNewEntityType());
+        assertEquals(0.05, r.getChance(), 1e-9);
+    }
 }

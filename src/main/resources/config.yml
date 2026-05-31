@@ -16,3 +16,44 @@ end-chances:
 overworld-chance:
   # Chance to spawn Guardian instead of a fish.
   guardian: 0.1
+#
+# Per-gamemode settings that override the global defaults above.
+# Each key is the exact GameMode addon name (case-sensitive).
+# Each gamemode may define up to three environment sections:
+#   world:  - replacements for the overworld
+#   nether: - replacements for the nether
+#   end:    - replacements for the end
+# Each section is a list of replacement rules:
+#   old:    EntityType name of the mob to replace (e.g. ZOMBIFIED_PIGLIN)
+#   new:    EntityType name of the replacement mob (e.g. WITHER_SKELETON)
+#   chance: Probability in the range 0.0-1.0
+# Per-gamemode rules are tried in order before the global defaults for that
+# environment. If a rule matches the spawning entity AND its chance roll
+# succeeds, the replacement is applied and processing stops for that event.
+# If no rule matches (different entity), or every matching rule's chance roll
+# fails, the global nether-chances / end-chances / overworld-chance values
+# above are applied as a fallback.
+# Example:
+# gamemode-settings:
+#   BSkyBlock:
+#     nether:
+#       - old: ZOMBIFIED_PIGLIN
+#         new: WITHER_SKELETON
+#         chance: 0.05
+#       - old: ZOMBIFIED_PIGLIN
+#         new: BLAZE
+#         chance: 0.1
+#     end:
+#       - old: ENDERMAN
+#         new: SHULKER
+#         chance: 0.3
+#     world:
+#       - old: COD
+#         new: GUARDIAN
+#         chance: 0.15
+#   AcidIsland:
+#     end:
+#       - old: ENDERMAN
+#         new: SHULKER
+#         chance: 0.5
+gamemode-settings: {}
